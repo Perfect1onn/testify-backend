@@ -5,10 +5,16 @@ interface Constructor {
 	new (...args: any[]): any;
 }
 
+interface ForeignService {
+	module: Constructor;
+	injectController: boolean;
+	injectService: boolean;
+}
+
 interface Options {
 	controller: Constructor;
 	service: Constructor;
-	foreignServices?: Constructor[];
+	foreignServices?: ForeignService[];
 	repository: Constructor;
 }
 
@@ -18,23 +24,49 @@ export function Module({
 	foreignServices = [],
 	repository: Repostitory,
 }: Options) {
-	const serviceInstances = foreignServices.map(
-		(module) => Object.getPrototypeOf(new module()).service
+	const foreignServiceInstances = foreignServices.reduce(
+		(
+			acc: { controllerServices: any[]; serviceServices: any[] },
+			foreignService
+		) => {
+			if (foreignService.injectController) {
+				acc.controllerServices.push(
+					Object.getPrototypeOf(new foreignService.module()).service
+				);
+			}
+
+			if (foreignService.injectService) {
+				acc.serviceServices.push(
+					Object.getPrototypeOf(new foreignService.module()).service
+				);
+			}
+			return acc;
+		},
+		{
+			controllerServices: [],
+			serviceServices: [],
+		}
+	);
+
+	/*
+		Depedency injection
+	*/
+	const service = new Service(
+		...foreignServiceInstances.serviceServices,
+		new Repostitory()
+	);
+	const controller = new Controller(
+		...foreignServiceInstances.controllerServices,
+		service
 	);
 
 	return function (constructor: Function) {
-		/*
-			Depedency injection
-		*/
-		const service = new Service(...serviceInstances, new Repostitory());
-		const controller = new Controller(service);
-
 		/*
 			Добавление методов к роутеру
 		*/
 		const prototype = Object.getPrototypeOf(controller);
 		const router = Router();
-		
+
 		for (let key in prototype) {
 			if (typeof prototype[key] === "function") {
 				const endpoint = prototype[key];

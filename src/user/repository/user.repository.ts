@@ -1,16 +1,26 @@
-const users: { id: number; name: string; }[] = [];
+import { ErrorHandler } from "../../utlis";
+import { UserEntity } from "../entites/user.enitity";
+import { ValidationError } from "sequelize";
 
 export class UserRepository {
-	createUser() {
-		const user = {
-			id: 1,
-			name: "samir",
-		};
-		users.push(user);
-		return user;
+	async createUser(user: UserEntity) {
+		try {
+			const builtUser = UserEntity.build({ ...user });
+			return await builtUser.save({ logging: true });
+		} catch (error: unknown) {
+			if (error instanceof ValidationError) {
+				throw new ErrorHandler(error.errors[0].message, 400);
+			}
+		}
 	}
 
-      getUsers() {
-		return users;
+	async getUsers() {
+		return await UserEntity.findAll();
+	}
+
+	async getUserBy(search: { [key: string]: any }) {
+		return await UserEntity.findOne({
+			where: search,
+		});
 	}
 }

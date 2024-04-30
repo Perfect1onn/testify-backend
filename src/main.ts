@@ -5,7 +5,7 @@ import express, { type Express } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { AppModule } from "./app.module";
-import { sequelize } from "./db"
+import { sequelize } from "./db";
 
 const main = async () => {
 	try {
@@ -16,7 +16,6 @@ const main = async () => {
 		app.use(cors());
 
 		const appModule = new AppModule();
-
 
 		/* 
 		
