@@ -1,5 +1,6 @@
 import { DataTypes, Model } from "sequelize";
 import { sequelize } from "../../db";
+import OTPEntity from "../../auth/enitites/otp.enitity"
 
 export class UserEntity extends Model {
 	declare id: number;
@@ -14,10 +15,10 @@ export class UserEntity extends Model {
 	declare subscription: Date;
 }
 
-UserEntity.init(
+const model = UserEntity.init(
 	{
 		id: {
-			type: DataTypes.INTEGER,
+			type: DataTypes.BIGINT,
 			primaryKey: true,
 			autoIncrement: true,
 		},
@@ -63,4 +64,12 @@ UserEntity.init(
 		tableName: "users",
 		sequelize,
 	}
-);
+)
+
+model.hasMany(OTPEntity, {
+	foreignKey: {
+		name: "userId",
+	}
+});
+
+

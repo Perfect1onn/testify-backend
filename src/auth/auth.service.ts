@@ -1,5 +1,6 @@
 import { UserEntity, UserService } from "../user";
 import { AuthRepository } from "./repository/auth.repository";
+import { mailTransporter } from "../main";
 import { ErrorHandler } from "../utlis";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
@@ -15,8 +16,64 @@ export class AuthService {
 		private readonly authRepository: AuthRepository
 	) {}
 
-	async signUp(userDTO: UserEntity) {
-		const user = (await this.userService.createUser(userDTO)) as UserEntity;
+	async sendOTP(email: string) {
+		if (!email) {
+			throw new ErrorHandler("email is invalid", 400);
+		}
+
+		const user = await this.userService.getUserByEmail(email);
+
+		if (!user) {
+			throw new ErrorHandler(
+				`user with such mail ${email} does not exist`,
+				400
+			);
+		}
+
+		const otp = this.generateOTP();
+
+		const mailType = user.isEmailConfirmed ? "verification" : "activation";
+
+		await mailTransporter.sendMail({
+			from: process.env.MAIL_USER,
+			to: email,
+			subject: `Account ${mailType} in Testify`,
+			text: "",
+			html: `    
+			<div>
+				<h1>Account ${mailType}</h1>
+				<p>Do not share the OTP code with anyone</p>
+				<h3>OTP:${otp}</p>
+			</div>
+			    `,
+		});
+
+		await this.authRepository.saveOTP(user.id, otp);
+	}
+
+	async verifyOTP(id: number, otp: string) {
+		if (!id || !otp) {
+			throw new ErrorHandler("not enough data", 400);
+		}
+
+		const user = await this.userService.getUserById(id);
+
+		if (!user) {
+			throw new ErrorHandler("user not found", 404);
+		}
+
+		const OTPFromDB = await this.authRepository.findOTP(id, otp);
+
+		if (!OTPFromDB) {
+			throw new ErrorHandler("otp is wrong", 400);
+		}
+
+		await this.authRepository.deleteOTPS(id);
+
+		if (!user.isEmailConfirmed) {
+			user.isEmailConfirmed = true;
+			await user.save();
+		}
 
 		const { accessToken, refreshToken } = this.generateTokens({
 			email: user.email,
@@ -26,6 +83,20 @@ export class AuthService {
 		const savedUser = await this.saveRefreshToken(user, refreshToken);
 
 		return { user: { ...savedUser.dataValues, accessToken }, refreshToken };
+	}
+
+	generateOTP() {
+		let code = "";
+		for (let i = 0; i < 4; i++) {
+			code += Math.floor(Math.random() * 10).toFixed(0);
+		}
+		return code;
+	}
+
+	async signUp(userDTO: UserEntity) {
+		const user = (await this.userService.createUser(userDTO)) as UserEntity;
+
+		return user;
 	}
 
 	async login(email: string, password: string) {
@@ -41,22 +112,15 @@ export class AuthService {
 			throw new ErrorHandler("User not found", 404);
 		}
 
-		const { accessToken, refreshToken } = this.generateTokens({
-			email: user.email,
-			name: user.name,
-		});
-
-		await this.saveRefreshToken(user, refreshToken);
-
-		return { accessToken, refreshToken };
+		return user;
 	}
 
 	generateTokens(payload: TokenPayload) {
-		const accessToken = jwt.sign(payload, "access_secret", {
+		const accessToken = jwt.sign(payload, process.env.ACCESS_SECRET!, {
 			expiresIn: "15m",
 		});
 
-		const refreshToken = jwt.sign(payload, "resfresh_secret", {
+		const refreshToken = jwt.sign(payload, process.env.REFRESH_SECRET!, {
 			expiresIn: "20d",
 		});
 
@@ -71,21 +135,21 @@ export class AuthService {
 			throw new ErrorHandler("refresh token is invalid", 400);
 		}
 
-		jwt.verify(refreshTokenFromCookie, "resfresh_secret");
+		jwt.verify(refreshTokenFromCookie, process.env.REFRESH_SECRET!);
 		const user = await this.userService.getUserByToken(refreshTokenFromCookie);
 
-		if(!user) {
+		if (!user) {
 			throw new ErrorHandler("refresh token is invalid", 404);
 		}
 
-		const {accessToken, refreshToken} = this.generateTokens({
+		const { accessToken, refreshToken } = this.generateTokens({
 			email: user.email,
-			name: user.name
-		})
+			name: user.name,
+		});
 
-		await this.saveRefreshToken(user, refreshToken)
+		await this.saveRefreshToken(user, refreshToken);
 
-		return {accessToken, refreshToken}
+		return { accessToken, refreshToken };
 	}
 
 	async saveRefreshToken(user: UserEntity, refreshToken: string) {
