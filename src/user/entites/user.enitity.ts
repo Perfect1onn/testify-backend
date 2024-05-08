@@ -1,8 +1,9 @@
 import { DataTypes, Model } from "sequelize";
 import { sequelize } from "../../db";
-import OTPEntity from "../../auth/enitites/otp.enitity"
+import { OTPEntity } from "../../auth/enitites/otp.enitity";
+import { TestEntity } from "../../test/entities/test.entities";
 
-export class UserEntity extends Model {
+export class User extends Model {
 	declare id: number;
 	declare name: string;
 	declare surname: string;
@@ -15,7 +16,7 @@ export class UserEntity extends Model {
 	declare subscription: Date;
 }
 
-const model = UserEntity.init(
+export const UserEntity = User.init(
 	{
 		id: {
 			type: DataTypes.BIGINT,
@@ -33,7 +34,7 @@ const model = UserEntity.init(
 		email: {
 			type: DataTypes.STRING,
 			allowNull: false,
-			unique: true
+			unique: true,
 		},
 		password: {
 			type: DataTypes.STRING,
@@ -64,12 +65,25 @@ const model = UserEntity.init(
 		tableName: "users",
 		sequelize,
 	}
-)
+);
 
-model.hasMany(OTPEntity, {
-	foreignKey: {
-		name: "userId",
-	}
+UserEntity.hasMany(OTPEntity, {
+	foreignKey: "userId",
+	sourceKey: "id",
 });
 
+export const UsersTestsEntity = sequelize.define("users_tests", {});
 
+UserEntity.belongsToMany(TestEntity, {
+	through: UsersTestsEntity,
+	foreignKey: {
+		name: "userId",
+	},
+});
+
+TestEntity.belongsToMany(UserEntity, {
+	through: UsersTestsEntity,
+	foreignKey: {
+		name: "testId",
+	},
+});

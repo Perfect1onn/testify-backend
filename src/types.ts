@@ -1,8 +1,7 @@
-import { Request, Response } from "express";
+import { Nestling, Request, Response } from "nestling.js";
 
-export interface IRequest extends Request {
-      tosh: string,
-      salam: string,
+declare global {
+		interface Request {
+			salam: string;
+		}
 }
-
-export interface IResponse extends Response {}

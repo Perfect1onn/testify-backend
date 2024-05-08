@@ -1,8 +1,7 @@
-import { NextFunction } from "express";
-import { IRequest, IResponse } from "../../types";
+import { Request, Response, NextFunction} from "nestling.js";
 import jwt from "jsonwebtoken";
 
-export const authMiddleware = (req: IRequest, res: IResponse, next: NextFunction) => {
+export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
       try {
             const token = req.headers.authorization
 
@@ -16,7 +15,7 @@ export const authMiddleware = (req: IRequest, res: IResponse, next: NextFunction
                   throw "token is invalid"
             }
       
-            jwt.verify(accessToken, "access_secret")
+            jwt.verify(accessToken, process.env.ACCESS_SECRET!)
 
             next()
       } catch(error) {

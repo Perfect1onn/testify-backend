@@ -1,4 +1,4 @@
-import { Module } from "../../decorators";
+import { Module } from "nestling.js";
 import { UserModule } from "../user";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";

@@ -1,11 +1,11 @@
 import { config } from "dotenv";
 config();
 
-import express, { type Express } from "express";
-import cors from "cors";
-import cookieParser from "cookie-parser";
+import { Nestling, json } from "nestling.js";
 import { AppModule } from "./app.module";
 import { sequelize } from "./db";
+import cors from "cors";
+import cookieParser from "cookie-parser";
 import modemailer from "nodemailer";
 
 export const mailTransporter = modemailer.createTransport({
@@ -20,29 +20,7 @@ export const mailTransporter = modemailer.createTransport({
 
 const main = async () => {
 	try {
-		const app: Express = express();
-
-		app.use(express.json());
-		app.use(cookieParser());
-		app.use(cors());
-
-		const appModule = new AppModule();
-
-		/* 
-		
-			Добавление роутера модуля к роутеру приложения
-
-			Пример:
-			AppModule = {
-				userModule: {...} => prototype => router: [ path , router ];
-				authModule: {...} => prototype => router: [ path , router ];
-			}
-
-		 */
-		Object.entries(appModule).forEach(([moduleName, module]) => {
-			console.log(`[module]: ${moduleName} is connected`);
-			app.use(...Object.getPrototypeOf(module).router);
-		});
+		const app = Nestling.create(AppModule, cors(), cookieParser(), json());
 
 		const port = process.env.PORT || 3000;
 

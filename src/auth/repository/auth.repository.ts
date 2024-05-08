@@ -1,8 +1,8 @@
-import { UserEntity } from "../../user";
-import OTPEnitity from "../enitites/otp.enitity";
+import { User } from "../../user/entites/user.enitity";
+import { OTPEntity } from "../enitites/otp.enitity";
 
 export class AuthRepository {
-	async saveRefreshToken(user: UserEntity, refreshToken: string) {
+	async saveRefreshToken(user: User, refreshToken: string) {
 		try {
 			user.refreshToken = refreshToken;
 			const savedUser = await user.save();
@@ -14,7 +14,7 @@ export class AuthRepository {
 	}
 
 	async saveOTP(userId: number, otp: string) {
-		const otpInstance = OTPEnitity.build({
+		const otpInstance = OTPEntity.build({
 			otp,
 		});
 
@@ -24,7 +24,7 @@ export class AuthRepository {
 	}
 
 	async findOTP(userId: number, otp: string) {
-		return await OTPEnitity.findOne({
+		return await OTPEntity.findOne({
 			where: {
 				userId,
 				otp,
@@ -33,7 +33,7 @@ export class AuthRepository {
 	}
 
 	async deleteOTPS(userId: number) {
-		await OTPEnitity.destroy({
+		await OTPEntity.destroy({
 			where: {
 				userId,
 			},

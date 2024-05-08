@@ -1,12 +1,12 @@
 import { ErrorHandler } from "../../utlis";
-import { UserEntity } from "../entites/user.enitity";
+import { User, UserEntity } from "../entites/user.enitity";
 import { ValidationError } from "sequelize";
 
 export class UserRepository {
-	async createUser(user: UserEntity) {
+	async createUser(user: User) {
 		try {
 			const builtUser = UserEntity.build({ ...user });
-			return await builtUser.save({ logging: true });
+			return await builtUser.save();
 		} catch (error: unknown) {
 			if (error instanceof ValidationError) {
 				throw new ErrorHandler(error.errors[0].message, 400);

@@ -1,9 +1,10 @@
-import { UserEntity, UserService } from "../user";
+import { UserService } from "../user";
 import { AuthRepository } from "./repository/auth.repository";
 import { mailTransporter } from "../main";
 import { ErrorHandler } from "../utlis";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
+import { User } from "../user/entites/user.enitity";
 
 interface TokenPayload {
 	name: string;
@@ -93,9 +94,8 @@ export class AuthService {
 		return code;
 	}
 
-	async signUp(userDTO: UserEntity) {
-		const user = (await this.userService.createUser(userDTO)) as UserEntity;
-
+	async signUp(userDTO: User) {
+		const user = (await this.userService.createUser(userDTO)) as User;
 		return user;
 	}
 
@@ -152,7 +152,7 @@ export class AuthService {
 		return { accessToken, refreshToken };
 	}
 
-	async saveRefreshToken(user: UserEntity, refreshToken: string) {
+	async saveRefreshToken(user: User, refreshToken: string) {
 		return await this.authRepository.saveRefreshToken(user, refreshToken);
 	}
 }

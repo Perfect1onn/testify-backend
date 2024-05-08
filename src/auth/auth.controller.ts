@@ -1,5 +1,4 @@
-import { Controller, Get, Post } from "../../decorators";
-import { IRequest, IResponse } from "../types";
+import { Controller, Get, Post, Request, Response } from "nestling.js";
 import { sendError } from "../utlis";
 import { AuthService } from "./auth.service";
 
@@ -8,7 +7,7 @@ export class AuthController {
 	constructor(private readonly authService: AuthService) {}
 
 	@Post("signUp")
-	async signUp(req: IRequest, res: IResponse) {
+	async signUp(req: Request, res: Response) {
 		try {
 			const user = await this.authService.signUp(req.body);
 			return res.status(201).send(user);
@@ -18,7 +17,8 @@ export class AuthController {
 	}
 
 	@Post("login")
-	async login(req: IRequest, res: IResponse) {
+	async login(req: Request, res: Response) {
+		console.log(req.body)
 		const { email, password } = req.body;
 
 		try {
@@ -31,7 +31,7 @@ export class AuthController {
 	}
 
 	@Get("refresh")
-	async refresh(req: IRequest, res: IResponse) {
+	async refresh(req: Request, res: Response) {
 		try {
 			const { refreshToken: refreshTokenFromCookie } = req.cookies;
 
@@ -52,7 +52,7 @@ export class AuthController {
 	}
 
 	@Post("verification")
-	async sendOTP(req: IRequest, res: IResponse) {
+	async sendOTP(req: Request, res: Response) {
 		const email = req.body.email;
 
 		try {
@@ -64,7 +64,7 @@ export class AuthController {
 	}
 
 	@Post("verify")
-	async verifyOTP(req: IRequest, res: IResponse) {
+	async verifyOTP(req: Request, res: Response) {
 		try {
 			const id = req.body.id;
 			const otp = req.body.otp;
@@ -84,8 +84,8 @@ export class AuthController {
 	}
 
 	@Get("logout")
-	async logout(req: IRequest, res: IResponse) {
-		res.clearCookie("refreshToken")
-		res.sendStatus(200)
+	async logout(req: Request, res: Response) {
+		res.clearCookie("refreshToken");
+		res.sendStatus(200);
 	}
 }
