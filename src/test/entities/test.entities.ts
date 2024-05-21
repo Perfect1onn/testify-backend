@@ -1,5 +1,6 @@
 import { DataTypes, Model } from "sequelize";
 import { sequelize } from "../../db";
+import { QuestionEntity } from "./question.entity";
 
 class Test extends Model {
 	declare id: number
@@ -21,13 +22,17 @@ export const TestEntity = Test.init(
 		questionsCount: {
 			type: DataTypes.INTEGER,
 			defaultValue: 0,
-		},
-		authorId: {
-			type: DataTypes.BIGINT,
 		}
 	},
 	{
 		sequelize,
 		tableName: "tests",
+		timestamps: false
 	}
 );
+
+TestEntity.hasMany(QuestionEntity, {
+	foreignKey: "testId",
+	sourceKey: "id",
+})
+QuestionEntity.belongsTo(TestEntity, { foreignKey: 'testId' });

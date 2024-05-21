@@ -1,12 +1,14 @@
 import { config } from "dotenv";
 config();
 
-import { Nestling, json } from "nestling.js";
-import { AppModule } from "./app.module";
-import { sequelize } from "./db";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import { AppModule } from "./app.module";
+import { Nestling, json, urlencoded } from "nestling.js";
+import fileUpload from "express-fileupload";
 import modemailer from "nodemailer";
+import { sequelize } from "./db";
+import ConvertApi from "convertapi";
 
 export const mailTransporter = modemailer.createTransport({
 	host: process.env.MAIL_HOST,
@@ -18,9 +20,20 @@ export const mailTransporter = modemailer.createTransport({
 	},
 });
 
+export const convertapi = new ConvertApi(process.env.CONVERT_API_SECRET!);
+
 const main = async () => {
 	try {
-		const app = Nestling.create(AppModule, cors(), cookieParser(), json());
+		const app = Nestling.create(
+			AppModule,
+			cors(),
+			cookieParser(),
+			fileUpload(),
+			urlencoded({
+				extended: false,
+			}),
+			json()
+		);
 
 		const port = process.env.PORT || 3000;
 

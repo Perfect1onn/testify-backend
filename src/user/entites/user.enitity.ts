@@ -72,7 +72,20 @@ UserEntity.hasMany(OTPEntity, {
 	sourceKey: "id",
 });
 
-export const UsersTestsEntity = sequelize.define("users_tests", {});
+UserEntity.hasMany(TestEntity, {
+	foreignKey: {
+		name: "authorId"
+	},
+	sourceKey: "id",
+
+})
+TestEntity.belongsTo(UserEntity, {
+	foreignKey: "authorId"
+});
+
+export const UsersTestsEntity = sequelize.define("users_tests", {}, {
+	timestamps: false
+});
 
 UserEntity.belongsToMany(TestEntity, {
 	through: UsersTestsEntity,
