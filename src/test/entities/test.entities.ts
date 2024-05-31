@@ -1,6 +1,7 @@
 import { DataTypes, Model } from "sequelize";
 import { sequelize } from "../../db";
 import { QuestionEntity } from "./question.entity";
+import { ResultEntity } from "./result.entity";
 
 class Test extends Model {
 	declare id: number
@@ -36,3 +37,9 @@ TestEntity.hasMany(QuestionEntity, {
 	sourceKey: "id",
 })
 QuestionEntity.belongsTo(TestEntity, { foreignKey: 'testId' });
+
+TestEntity.hasMany(ResultEntity, {
+	foreignKey: "testId",
+	sourceKey: "id",
+})
+ResultEntity.belongsTo(TestEntity, { foreignKey: 'testId' });

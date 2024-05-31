@@ -26,7 +26,10 @@ const main = async () => {
 	try {
 		const app = Nestling.create(
 			AppModule,
-			cors(),
+			cors({
+				credentials: true,
+				origin: "http://localhost:5173"
+			}),
 			cookieParser(),
 			fileUpload(),
 			urlencoded({

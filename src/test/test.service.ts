@@ -6,14 +6,11 @@ import { fromFileWithPath } from "textract";
 import { testParser } from "./utils/testParser";
 import { sequelize } from "../db";
 import { v4 } from "uuid";
-import {
-	QuestionEntity,
-	VariantEntity,
-	WrongAnswerEntity,
-} from "./entities";
+import { QuestionEntity, TestSessionEntity, VariantEntity, WrongAnswerEntity } from "./entities";
 import fileUpload from "express-fileupload";
 import path from "path";
 import fs from "fs/promises";
+import { ResultEntity } from "./entities/result.entity";
 
 interface Variant {
 	text: string;
@@ -122,6 +119,7 @@ export class TestService {
 						);
 
 						await transaction.commit();
+						return createdTest;
 					} catch (err) {
 						await transaction.rollback();
 						throw new ErrorHandler("Transaction Error", 400);
@@ -131,9 +129,9 @@ export class TestService {
 		}
 	}
 
-	async getTests(userId: number | undefined, mine: boolean | undefined) {
-		if (mine === undefined) {
-			throw new ErrorHandler("mine property not defined", 400);
+	async getTests(userId: number, filter: "all" | "added" | "my" = "all") {
+		if (filter === undefined) {
+			throw new ErrorHandler("filter property not defined", 400);
 		}
 
 		if (userId) {
@@ -144,7 +142,11 @@ export class TestService {
 			}
 		}
 
-		return await this.testRepository.getTests(userId, mine);
+		return await this.testRepository.getTests(userId, filter);
+	}
+
+	async getTestById(id: number) {
+		return await this.testRepository.getTestById(id);
 	}
 
 	async addTest(userId: number | undefined, testId: number | undefined) {
@@ -210,13 +212,24 @@ export class TestService {
 		}
 	}
 
+	async getQuestionsById (questionsIds: number[]) {
+		return await QuestionEntity.findAll({
+			where: {
+				id: questionsIds
+			},
+			include: {
+				model: VariantEntity
+			}
+		})
+	}
+
 	// TODO: MODE , перенести логику работы с данными в testRepository
 	async checkAnswers(userAnswer: Answer, testSessionId: number, mode: Mode) {
 		const correctAnswers = await this.testRepository.getCorrectAnswers(
 			userAnswer.questionIds
 		);
 
-		userAnswer.variantIds.sort(((a, b) => a - b))
+		userAnswer.variantIds.sort((a, b) => a - b);
 
 		const allWrongAnswers = (await WrongAnswerEntity.findAll()).map(
 			(answer) => +answer.questionId
@@ -231,11 +244,12 @@ export class TestService {
 			const hasAnswerInDB = allWrongAnswers.includes(questionId);
 
 			if (!isAnswerCorrect) {
-				if (!hasAnswerInDB)
+				if (!hasAnswerInDB) {
 					wrongAnswers.push({
 						questionId,
 						testSessionId,
 					});
+				}
 			} else if (hasAnswerInDB) {
 				correctAnswersIdsForDelete.push(questionId);
 			}
@@ -255,6 +269,18 @@ export class TestService {
 			});
 
 			await WrongAnswerEntity.bulkCreate(wrongAnswers);
+		} else {
+			const testSession = await TestSessionEntity.findByPk(testSessionId);
+			if(testSession) {
+				return await ResultEntity.create({
+					userId: testSession.userId,
+					testId: testSession.testId,
+					mode: "exam",
+					totalAnswersCount: userAnswer.questionIds.length,
+					correctAnswersCount:  userAnswer.questionIds.length - wrongAnswers.length,
+					wrongAnswersIds: wrongAnswers.map(({questionId}) => questionId)
+				})
+			}
 		}
 
 		return result;
@@ -274,9 +300,6 @@ export class TestService {
 			userId,
 			mode
 		);
-		return {
-			testSession,
-			...(await this.getQuestions(testId, testSession.id, 0, mode)),
-		};
+		return testSession;
 	}
 }

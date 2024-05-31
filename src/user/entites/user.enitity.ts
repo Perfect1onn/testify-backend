@@ -2,6 +2,7 @@ import { DataTypes, Model } from "sequelize";
 import { sequelize } from "../../db";
 import { OTPEntity } from "../../auth/enitites/otp.enitity";
 import { TestEntity } from "../../test/entities/test.entities";
+import { ResultEntity } from "../../test/entities/result.entity";
 
 export class User extends Model {
 	declare id: number;
@@ -10,7 +11,6 @@ export class User extends Model {
 	declare email: string;
 	declare password: string;
 	declare refreshToken: string;
-	declare ip: number;
 	declare isBanned: boolean;
 	declare isEmailConfirmed: boolean;
 	declare subscription: Date;
@@ -44,10 +44,6 @@ export const UserEntity = User.init(
 			type: DataTypes.STRING,
 			allowNull: true,
 		},
-		ip: {
-			type: DataTypes.INTEGER,
-			allowNull: false,
-		},
 		isBanned: {
 			type: DataTypes.BOOLEAN,
 			defaultValue: false,
@@ -73,6 +69,7 @@ UserEntity.hasMany(OTPEntity, {
 });
 
 UserEntity.hasMany(TestEntity, {
+	as: 'author',
 	foreignKey: {
 		name: "authorId"
 	},
@@ -80,6 +77,7 @@ UserEntity.hasMany(TestEntity, {
 
 })
 TestEntity.belongsTo(UserEntity, {
+	as: 'author',
 	foreignKey: "authorId"
 });
 
@@ -89,6 +87,7 @@ export const UsersTestsEntity = sequelize.define("users_tests", {}, {
 
 UserEntity.belongsToMany(TestEntity, {
 	through: UsersTestsEntity,
+	as: 'tests',
 	foreignKey: {
 		name: "userId",
 	},
@@ -96,7 +95,15 @@ UserEntity.belongsToMany(TestEntity, {
 
 TestEntity.belongsToMany(UserEntity, {
 	through: UsersTestsEntity,
+	as: 'users',
 	foreignKey: {
 		name: "testId",
 	},
 });
+
+
+UserEntity.hasMany(ResultEntity, {
+	foreignKey: "userId",
+	sourceKey: "id",
+})
+ResultEntity.belongsTo(UserEntity, { foreignKey: 'userId' });

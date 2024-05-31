@@ -5,7 +5,7 @@ import {
 	VariantEntity,
 	TestSessionEntity,
 } from "../entities";
-import { Includeable, QueryTypes, Transaction } from "sequelize";
+import { Includeable, Op, QueryTypes, Transaction } from "sequelize";
 import { UserEntity, UsersTestsEntity } from "../../user/entites/user.enitity";
 import { Mode } from "../test.service";
 import { sequelize } from "../../db";
@@ -20,7 +20,7 @@ export class TestRepository {
 	) {
 		const createdTest = await TestEntity.create(
 			{
-				name: file.name,
+				name: Buffer.from(file.name, "latin1").toString("utf8"),
 				questionsCount: questionsCount,
 				authorId: userId,
 			},
@@ -54,38 +54,66 @@ export class TestRepository {
 		});
 	}
 
-	async getTests(userId: number | undefined, mine: boolean) {
-		const includeOptions: Includeable = {
-			model: TestEntity,
-			through: {
-				attributes: [],
-			},
-		};
-
-		if (mine) {
-			includeOptions.where = {
-				authorId: userId,
-			};
-		} else {
-			includeOptions.include = [
-				{
-					model: UserEntity,
-					attributes: ["id", "name", "surname", "email", "isEmailConfirmed"],
-				},
-			];
-		}
-
-		return userId
-			? await UserEntity.findByPk(userId, {
-					include: [includeOptions],
-					attributes: ["id", "name", "surname", "email", "isEmailConfirmed"],
-			  })
-			: await TestEntity.findAll({
-					include: {
+	async getTests(userId: number, filter: "all" | "added" | "my") {
+		// ПРОРЕФАКТОРИТЬ
+		if(filter === "all") {
+			return await TestEntity.findAll({
+				include: [
+					{
 						model: UserEntity,
+						as: "users",
+						where: { id: userId },
+						attributes: ["id", "name", "surname", "email"],
+						required: false,
+						through: {
+							attributes: [],
+						},
+					},
+					{
+						model: UserEntity,
+						as: "author",
+						attributes: ["id", "name", "surname", "email"],
+					},
+				],
+			});
+		} else if (filter === "added") {
+			return TestEntity.findAll({
+				where: {
+					authorId: {
+						[Op.ne]: userId
+					}
+				},
+				include: [
+					{
+						model: UserEntity,
+						where: {
+							id: userId
+						},
+						through: {
+							attributes: [],
+						},
+						as: "users",
 						attributes: ["id", "name", "surname", "email", "isEmailConfirmed"],
 					},
-			  });
+					{
+						model: UserEntity,
+						as: "author",
+						attributes: ["id", "name", "surname", "email"],
+					},
+				],
+			})
+		} else {
+			return await TestEntity.findAll({
+				where: { authorId: userId },
+				include: [
+					{
+						model: UserEntity,
+						as: "author",
+						attributes: ["id", "name", "surname", "email", "isEmailConfirmed"],
+					},
+				],
+			});
+		}
 	}
 
 	async addTest(userId: number, testId: number) {
@@ -93,6 +121,17 @@ export class TestRepository {
 			userId,
 			testId,
 		});
+	}
+
+	async getTestById (id: number) {
+		console.log(id)
+		return await TestEntity.findByPk(id, {
+			include: {
+				model: UserEntity,
+				as: "author",
+				attributes: ["id", "name", "surname", "email"],
+			}
+		})
 	}
 
 	async getQuestions(

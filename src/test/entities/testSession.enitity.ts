@@ -24,7 +24,6 @@ export const TestSessionEntity = TestSession.init(
             },
 		userId: {
 			type: DataTypes.BIGINT,
-			unique: true
 		}
 	},
 	{

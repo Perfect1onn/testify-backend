@@ -66,7 +66,7 @@ export class AuthService {
 		const OTPFromDB = await this.authRepository.findOTP(id, otp);
 
 		if (!OTPFromDB) {
-			throw new ErrorHandler("otp is wrong", 400);
+			throw new ErrorHandler("otp is wrong", 404);
 		}
 
 		await this.authRepository.deleteOTPS(id);
@@ -81,9 +81,9 @@ export class AuthService {
 			name: user.name,
 		});
 
-		const savedUser = await this.saveRefreshToken(user, refreshToken);
+		await this.saveRefreshToken(user, refreshToken);
 
-		return { user: { ...savedUser.dataValues, accessToken }, refreshToken };
+		return { user: { accessToken }, refreshToken };
 	}
 
 	generateOTP() {
@@ -117,7 +117,7 @@ export class AuthService {
 
 	generateTokens(payload: TokenPayload) {
 		const accessToken = jwt.sign(payload, process.env.ACCESS_SECRET!, {
-			expiresIn: "15m",
+			expiresIn: "20m",
 		});
 
 		const refreshToken = jwt.sign(payload, process.env.REFRESH_SECRET!, {
