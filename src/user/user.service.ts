@@ -30,6 +30,7 @@ export class UserService {
 	}
 
 	async getUserByToken(token: string) {
+		console.log(token, "getUserByToken")
 		return await this.userRepository.getUserBy({ refreshToken: token });
 	}
 }

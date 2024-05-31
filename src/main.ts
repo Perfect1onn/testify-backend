@@ -28,7 +28,7 @@ const main = async () => {
 			AppModule,
 			cors({
 				credentials: true,
-				origin: "http://localhost:5173"
+				origin: "https://app-testify.netlify.app"
 			}),
 			cookieParser(),
 			fileUpload(),

@@ -6,7 +6,12 @@ import { fromFileWithPath } from "textract";
 import { testParser } from "./utils/testParser";
 import { sequelize } from "../db";
 import { v4 } from "uuid";
-import { QuestionEntity, TestSessionEntity, VariantEntity, WrongAnswerEntity } from "./entities";
+import {
+	QuestionEntity,
+	TestSessionEntity,
+	VariantEntity,
+	WrongAnswerEntity,
+} from "./entities";
 import fileUpload from "express-fileupload";
 import path from "path";
 import fs from "fs/promises";
@@ -206,21 +211,22 @@ export class TestService {
 			);
 
 			return {
-				questions: [...questions, ...wrongAnswers],
+				questions: [...wrongAnswers, ...questions],
 				lastId: questions.length && questions.at(-1)?.id,
+				offset: offset + limit,
 			};
 		}
 	}
 
-	async getQuestionsById (questionsIds: number[]) {
+	async getQuestionsById(questionsIds: string[]) {
 		return await QuestionEntity.findAll({
 			where: {
-				id: questionsIds
+				id: questionsIds,
 			},
 			include: {
-				model: VariantEntity
-			}
-		})
+				model: VariantEntity,
+			},
+		});
 	}
 
 	// TODO: MODE , перенести логику работы с данными в testRepository
@@ -231,16 +237,21 @@ export class TestService {
 
 		userAnswer.variantIds.sort((a, b) => a - b);
 
-		const allWrongAnswers = (await WrongAnswerEntity.findAll()).map(
-			(answer) => +answer.questionId
-		);
+		const allWrongAnswers = (
+			await WrongAnswerEntity.findAll({
+				where: {
+					testSessionId,
+				},
+			})
+		).map((answer) => +answer.questionId);
 
 		const wrongAnswers: { questionId: number; testSessionId: number }[] = [];
 		const correctAnswersIdsForDelete: number[] = [];
 
 		const result = correctAnswers.map((correctAnswer, idx) => {
-			const isAnswerCorrect = +correctAnswer.id === userAnswer.variantIds[idx];
-			const questionId = userAnswer.questionIds[idx];
+			const isAnswerCorrect = +correctAnswer.id === +userAnswer.variantIds[idx];
+			const questionId = +correctAnswer.questionId;
+			console.log(questionId, typeof questionId)
 			const hasAnswerInDB = allWrongAnswers.includes(questionId);
 
 			if (!isAnswerCorrect) {
@@ -264,6 +275,7 @@ export class TestService {
 		if (mode === "study") {
 			await WrongAnswerEntity.destroy({
 				where: {
+					testSessionId,
 					questionId: correctAnswersIdsForDelete,
 				},
 			});
@@ -271,15 +283,16 @@ export class TestService {
 			await WrongAnswerEntity.bulkCreate(wrongAnswers);
 		} else {
 			const testSession = await TestSessionEntity.findByPk(testSessionId);
-			if(testSession) {
+			if (testSession) {
 				return await ResultEntity.create({
 					userId: testSession.userId,
 					testId: testSession.testId,
 					mode: "exam",
 					totalAnswersCount: userAnswer.questionIds.length,
-					correctAnswersCount:  userAnswer.questionIds.length - wrongAnswers.length,
-					wrongAnswersIds: wrongAnswers.map(({questionId}) => questionId)
-				})
+					correctAnswersCount:
+						userAnswer.questionIds.length - wrongAnswers.length,
+					wrongAnswersIds: wrongAnswers.map(({ questionId }) => questionId),
+				});
 			}
 		}
 

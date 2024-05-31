@@ -5,7 +5,7 @@ import {
 	VariantEntity,
 	TestSessionEntity,
 } from "../entities";
-import { Includeable, Op, QueryTypes, Transaction } from "sequelize";
+import { Includeable, Op, QueryTypes, Transaction, literal } from "sequelize";
 import { UserEntity, UsersTestsEntity } from "../../user/entites/user.enitity";
 import { Mode } from "../test.service";
 import { sequelize } from "../../db";
@@ -56,7 +56,7 @@ export class TestRepository {
 
 	async getTests(userId: number, filter: "all" | "added" | "my") {
 		// ПРОРЕФАКТОРИТЬ
-		if(filter === "all") {
+		if (filter === "all") {
 			return await TestEntity.findAll({
 				include: [
 					{
@@ -80,14 +80,14 @@ export class TestRepository {
 			return TestEntity.findAll({
 				where: {
 					authorId: {
-						[Op.ne]: userId
-					}
+						[Op.ne]: userId,
+					},
 				},
 				include: [
 					{
 						model: UserEntity,
 						where: {
-							id: userId
+							id: userId,
 						},
 						through: {
 							attributes: [],
@@ -101,7 +101,7 @@ export class TestRepository {
 						attributes: ["id", "name", "surname", "email"],
 					},
 				],
-			})
+			});
 		} else {
 			return await TestEntity.findAll({
 				where: { authorId: userId },
@@ -123,15 +123,14 @@ export class TestRepository {
 		});
 	}
 
-	async getTestById (id: number) {
-		console.log(id)
+	async getTestById(id: number) {
 		return await TestEntity.findByPk(id, {
 			include: {
 				model: UserEntity,
 				as: "author",
 				attributes: ["id", "name", "surname", "email"],
-			}
-		})
+			},
+		});
 	}
 
 	async getQuestions(

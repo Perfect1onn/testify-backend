@@ -47,6 +47,13 @@ function isVariant(text: string) {
 	);
 }
 
+function getSeparator (text: string) {
+	const regex = /\d+[\.\s\)]\s*(.*)/;
+	
+	const separator = text.match(regex)?.[1];
+	return separator;
+}
+
 export function testParser(text: string) {
 	console.log(text.split("\n"))
 	const splittedText = text.split("\n").filter((chunk) => {
@@ -87,9 +94,11 @@ export function testParser(text: string) {
 					});
 
 					variants[0].isCorrect = true;
+					const seporator = getSeparator(question)
+					const getSeporatorIndex = seporator ? question.indexOf(seporator) : 0
 
 					questions.push({
-						description: question,
+						description: question.slice(getSeporatorIndex),
 						variants,
 					});
 

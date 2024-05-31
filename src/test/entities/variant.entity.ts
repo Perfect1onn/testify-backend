@@ -5,6 +5,7 @@ export class Variant extends Model {
 	declare id: number;
 	declare text: string;
 	declare isCorrect: boolean;
+	declare questionId: number
 }
 
 export const VariantEntity = Variant.init(

@@ -58,12 +58,12 @@ export class TestController {
 
 	@Get("questions/default")
 	async getQuestionsById(req: Request, res: Response) {
-		const { questionIds } = req.body;
+		const { questionIds } = req.query;
 
 		try {
 			res
 				.status(200)
-				.send(await this.testService.getQuestionsById(questionIds));
+				.send(await this.testService.getQuestionsById((questionIds as string).split(",")));
 		} catch (err) {
 			sendError(res, err);
 		}
@@ -71,6 +71,7 @@ export class TestController {
 
 	@Get("results/:id")
 	async getResultById(req: Request, res: Response) {
+		// TODO ОТРЕФАКТОРИТЬ
 		try {
 			res.status(200).send(await ResultEntity.findByPk(req.params.id));
 		} catch (err) {
@@ -81,6 +82,7 @@ export class TestController {
 	@Post("results")
 	async getResults(req: Request, res: Response) {
 		const { testId, userId } = req.body;
+		// TODO ОТРЕФАКТОРИТЬ
 		try {
 			res.status(200).send(
 				await ResultEntity.findAll({
@@ -125,6 +127,7 @@ export class TestController {
 
 	@Get("sessions/:sessionId")
 	async getTestSession(req: Request, res: Response) {
+		// TODO ОТРЕФАКТОРИТЬ
 		try {
 			res.status(200).send(
 				await TestSessionEntity.findByPk(req.params.sessionId, {

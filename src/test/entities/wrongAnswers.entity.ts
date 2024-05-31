@@ -16,8 +16,7 @@ export const WrongAnswerEntity = WrongAnswer.init({
 			autoIncrement: true,
 		},
             questionId: {
-                  type: DataTypes.BIGINT,
-                  unique: true  
+                  type: DataTypes.BIGINT
             }
 }, {
       sequelize,

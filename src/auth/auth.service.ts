@@ -117,7 +117,7 @@ export class AuthService {
 
 	generateTokens(payload: TokenPayload) {
 		const accessToken = jwt.sign(payload, process.env.ACCESS_SECRET!, {
-			expiresIn: "20m",
+			expiresIn: "20d",
 		});
 
 		const refreshToken = jwt.sign(payload, process.env.REFRESH_SECRET!, {
@@ -136,7 +136,9 @@ export class AuthService {
 		}
 
 		jwt.verify(refreshTokenFromCookie, process.env.REFRESH_SECRET!);
-		const user = await this.userService.getUserByToken(refreshTokenFromCookie);
+		const tokenPayload = jwt.decode(refreshTokenFromCookie) as TokenPayload
+
+		const user = await this.userService.getUserByEmail(tokenPayload.email)
 
 		if (!user) {
 			throw new ErrorHandler("refresh token is invalid", 404);
