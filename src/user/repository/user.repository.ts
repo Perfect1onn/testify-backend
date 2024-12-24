@@ -8,6 +8,7 @@ export class UserRepository {
 			const builtUser = UserEntity.build({ ...user });
 			return await builtUser.save();
 		} catch (error: unknown) {
+			console.log(error)
 			if (error instanceof ValidationError) {
 				throw new ErrorHandler(error.errors[0].message, 400);
 			}

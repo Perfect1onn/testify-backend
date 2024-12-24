@@ -3,8 +3,13 @@ import { AuthRepository } from "./repository/auth.repository";
 import { mailTransporter } from "../main";
 import { ErrorHandler } from "../utlis";
 import jwt from "jsonwebtoken";
-import bcrypt from "bcrypt";
 import { User } from "../user/entites/user.enitity";
+import { server } from "@passwordless-id/webauthn";
+import {
+	AuthenticationJSON,
+	RegistrationInfo,
+	RegistrationJSON,
+} from "@passwordless-id/webauthn/dist/esm/types";
 
 interface TokenPayload {
 	name: string;
@@ -16,6 +21,134 @@ export class AuthService {
 		private readonly userService: UserService,
 		private readonly authRepository: AuthRepository
 	) {}
+
+	async createChallenge(email: string) {
+		if (!email) {
+			throw new ErrorHandler("email is invalid", 400);
+		}
+
+		const savedChallenge = await this.authRepository.getChallenge(email);
+
+		if (savedChallenge) {
+			await this.authRepository.deleteChallenge(email);
+		}
+
+		const newChallenge = server.randomChallenge();
+
+		return await this.authRepository.createChallenge(email, newChallenge);
+	}
+
+	async authenticate(email: string, authenticationJSON: AuthenticationJSON) {
+		const challengeObject = await this.authRepository.getChallenge(email);
+
+		if (!challengeObject) {
+			throw new ErrorHandler(
+				`challenge with such mail ${email} does not exist`,
+				400
+			);
+		}
+
+		const user = await this.userService.getUserByEmail(email);
+
+		if (!user) {
+			throw new ErrorHandler(
+				`user with such mail ${email} does not exist`,
+				400
+			);
+		}
+
+		const credential = await this.authRepository.getCredential(
+			user.dataValues.id
+		);
+
+		if (!credential) {
+			throw new ErrorHandler(
+				`user with such mail ${email} does not exist`,
+				400
+			);
+		}
+
+		const { id, algorithm, publicKey, transports } = credential;
+
+		const expected = {
+			challenge: challengeObject.challenge,
+			origin: "https://app-testify.netlify.app",
+			userVerified: true, // should be set if `userVerification` was set to `required` in the authentication options (default)
+		};
+
+		await server.verifyAuthentication(
+			authenticationJSON,
+			{
+				id,
+				algorithm,
+				publicKey,
+				transports: JSON.parse(transports),
+			} as RegistrationInfo["credential"],
+			expected
+		);
+
+		const { accessToken, refreshToken } = this.generateTokens({
+			email: user.email,
+			name: user.name,
+		});
+
+		await this.saveRefreshToken(user, refreshToken);
+
+		return { ...user.dataValues, accessToken };
+	}
+
+	async verifyChallange(publicKeyCredentialData: RegistrationJSON) {
+		const email = publicKeyCredentialData.user.displayName!;
+		const challengeObject = await this.authRepository.getChallenge(email);
+
+		if (!challengeObject) {
+			throw new ErrorHandler(
+				`challenge with such mail ${email} does not exist`,
+				400
+			);
+		}
+
+		const expected = {
+			challenge: challengeObject.challenge,
+			origin: "https://app-testify.netlify.app",
+		};
+
+		try {
+			const registrationParsed = await server.verifyRegistration(
+				publicKeyCredentialData,
+				expected
+			);
+			const [name, surname] = registrationParsed.user.name.split(" ");
+			const newUser = {
+				name,
+				surname,
+				email,
+			} as User;
+
+			const user = await this.signUp(newUser);
+
+			console.log(user);
+			await this.authRepository.saveCredential(
+				user.dataValues.id,
+				registrationParsed["credential"]
+			);
+
+			const { accessToken, refreshToken } = this.generateTokens({
+				email: user.email,
+				name: user.name,
+			});
+
+			await this.saveRefreshToken(user, refreshToken);
+
+			return { ...user.dataValues, accessToken };
+		} catch (error) {
+			console.log(error);
+			throw new ErrorHandler(
+				`verify challenge was ${JSON.stringify(error)} failed`,
+				400
+			);
+		}
+	}
 
 	async sendOTP(email: string) {
 		if (!email) {
@@ -99,25 +232,37 @@ export class AuthService {
 		return user;
 	}
 
-	async login(email: string, password: string) {
+	async login(email: string) {
 		const user = await this.userService.getUserByEmail(email);
 
 		if (!user) {
 			throw new ErrorHandler("User not found", 404);
 		}
 
-		const isPasswordCorrect = await bcrypt.compare(password, user.password);
+		const credential = await this.authRepository.getCredential(
+			user.dataValues.id
+		);
 
-		if (!isPasswordCorrect) {
-			throw new ErrorHandler("User not found", 404);
+		if (!credential) {
+			throw new ErrorHandler(
+				`user with such mail ${email} does not exist`,
+				400
+			);
 		}
 
-		return user;
+		const { challenge } = await this.createChallenge(email);
+
+		return {
+			challenge,
+			allowCredentials: [
+				{ id: credential.id, transports: JSON.parse(credential.transports) },
+			],
+		};
 	}
 
 	generateTokens(payload: TokenPayload) {
 		const accessToken = jwt.sign(payload, process.env.ACCESS_SECRET!, {
-			expiresIn: "20d",
+			expiresIn: "30d",
 		});
 
 		const refreshToken = jwt.sign(payload, process.env.REFRESH_SECRET!, {
@@ -132,26 +277,23 @@ export class AuthService {
 
 	async refresh(refreshTokenFromCookie: string | undefined) {
 		if (!refreshTokenFromCookie) {
-			throw new ErrorHandler("refresh token is invalid", 400);
+			throw new ErrorHandler("access token is invalid", 400);
 		}
 
-		jwt.verify(refreshTokenFromCookie, process.env.REFRESH_SECRET!);
-		const tokenPayload = jwt.decode(refreshTokenFromCookie) as TokenPayload
-
-		const user = await this.userService.getUserByEmail(tokenPayload.email)
+		const user = await this.userService.getUserByToken(refreshTokenFromCookie);
 
 		if (!user) {
 			throw new ErrorHandler("refresh token is invalid", 404);
 		}
 
-		const { accessToken, refreshToken } = this.generateTokens({
+		jwt.verify(user.refreshToken, process.env.REFRESH_SECRET!);
+
+		const { accessToken } = this.generateTokens({
 			email: user.email,
 			name: user.name,
 		});
 
-		await this.saveRefreshToken(user, refreshToken);
-
-		return { accessToken, refreshToken };
+		return { accessToken };
 	}
 
 	async saveRefreshToken(user: User, refreshToken: string) {

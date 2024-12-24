@@ -3,13 +3,13 @@ import { sequelize } from "../../db";
 import { OTPEntity } from "../../auth/enitites/otp.enitity";
 import { TestEntity } from "../../test/entities/test.entities";
 import { ResultEntity } from "../../test/entities/result.entity";
+import { CredentialEntity } from "../../auth/enitites/credential.entity";
 
 export class User extends Model {
 	declare id: number;
 	declare name: string;
 	declare surname: string;
 	declare email: string;
-	declare password: string;
 	declare refreshToken: string;
 	declare isBanned: boolean;
 	declare isEmailConfirmed: boolean;
@@ -35,10 +35,6 @@ export const UserEntity = User.init(
 			type: DataTypes.STRING,
 			allowNull: false,
 			unique: true,
-		},
-		password: {
-			type: DataTypes.STRING,
-			allowNull: false,
 		},
 		refreshToken: {
 			type: DataTypes.STRING,
@@ -107,3 +103,5 @@ UserEntity.hasMany(ResultEntity, {
 	sourceKey: "id",
 })
 ResultEntity.belongsTo(UserEntity, { foreignKey: 'userId' });
+
+UserEntity.hasOne(CredentialEntity, { foreignKey: 'userId' });

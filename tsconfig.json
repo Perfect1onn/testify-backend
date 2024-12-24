@@ -4,13 +4,13 @@
      "experimentalDecorators": true,
      "module": "commonjs",
      "rootDir": "./",
-     "resolveJsonModule": true, /* in case you are importing JSON files */
+     "resolveJsonModule": true,
      "outDir": "./dist",
      "esModuleInterop": true,
      "forceConsistentCasingInFileNames": true,
      "strict": true,
      "noImplicitAny": true,
      "skipLibCheck": true,
-     "sourceMap": true
+     "sourceMap": false
   }
 }
