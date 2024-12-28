@@ -72,7 +72,7 @@ export class AuthService {
 
 		const expected = {
 			challenge: challengeObject.challenge,
-			origin: "https://app-testify.netlify.app",
+			origin: process.env.FRONTEND_URL!,
 			userVerified: true, // should be set if `userVerification` was set to `required` in the authentication options (default)
 		};
 
@@ -110,7 +110,7 @@ export class AuthService {
 
 		const expected = {
 			challenge: challengeObject.challenge,
-			origin: "https://app-testify.netlify.app",
+			origin: process.env.FRONTEND_URL!,
 		};
 
 		try {

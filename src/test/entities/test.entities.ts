@@ -3,7 +3,7 @@ import { sequelize } from "../../db";
 import { QuestionEntity } from "./question.entity";
 import { ResultEntity } from "./result.entity";
 
-class Test extends Model {
+export class Test extends Model {
 	declare id: number
 	declare name: string
 	declare questionsCount: number

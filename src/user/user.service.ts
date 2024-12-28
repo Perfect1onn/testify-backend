@@ -1,4 +1,3 @@
-import { ErrorHandler } from "../utlis";
 import { User } from "./entites/user.enitity";
 import { UserRepository } from "./repository/user.repository";
 

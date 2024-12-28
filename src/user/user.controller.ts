@@ -13,8 +13,9 @@ export class UserController {
 
 	@Get(":id")
 	async getUserById(req: Request, res: Response) {
+		const user = await this.userService.getUserById(+req.params.id)
 		return res
-			.status(200)
-			.send(await this.userService.getUserById(+req.params.id));
+		.status(200)
+		.send(user);
 	}
 }

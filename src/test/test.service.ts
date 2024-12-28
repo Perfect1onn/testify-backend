@@ -16,6 +16,7 @@ import fileUpload from "express-fileupload";
 import path from "path";
 import fs from "fs/promises";
 import { ResultEntity } from "./entities/result.entity";
+import { Test } from "./entities/test.entities";
 
 interface Variant {
 	text: string;
@@ -53,6 +54,8 @@ export class TestService {
 		if (!user) {
 			throw new ErrorHandler(`user with userId: ${userId} not found`, 404);
 		}
+
+		let result: Test | ErrorHandler | undefined;
 
 		if (!Array.isArray(file)) {
 			const fileName = `${v4()}${file.name}`;
@@ -124,13 +127,20 @@ export class TestService {
 						);
 
 						await transaction.commit();
-						return createdTest;
+						
+						result = createdTest;
 					} catch (err) {
 						await transaction.rollback();
-						throw new ErrorHandler("Transaction Error", 400);
+						result = new ErrorHandler("Transaction Error", 400)
 					}
 				}
 			);
+		}
+
+		if(result instanceof ErrorHandler){
+			throw result
+		} else {
+			return result
 		}
 	}
 

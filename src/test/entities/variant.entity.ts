@@ -16,7 +16,7 @@ export const VariantEntity = Variant.init(
 			autoIncrement: true,
 		},
 		text: {
-			type: DataTypes.STRING,
+			type: DataTypes.TEXT,
 		},
 		isCorrect: {
 			type: DataTypes.BOOLEAN,
