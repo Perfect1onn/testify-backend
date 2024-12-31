@@ -2,9 +2,16 @@ import { Controller, Get, Post, Request, Response } from "nestling.js";
 import { Mode, TestService } from "./test.service";
 import { sendError } from "../utlis";
 import { authMiddleware } from "../auth/middlewares";
-import { TestEntity, TestSessionEntity } from "./entities";
+import {
+	QuestionEntity,
+	TestEntity,
+	TestSessionEntity,
+	VariantEntity,
+	WrongAnswerEntity,
+} from "./entities";
 import { UserEntity } from "../user";
 import { ResultEntity } from "./entities/result.entity";
+import { isAvailable } from "@passwordless-id/webauthn/dist/esm/client";
 
 @Controller("tests", authMiddleware)
 export class TestController {
@@ -63,7 +70,11 @@ export class TestController {
 		try {
 			res
 				.status(200)
-				.send(await this.testService.getQuestionsById((questionIds as string).split(",")));
+				.send(
+					await this.testService.getQuestionsById(
+						(questionIds as string).split(",")
+					)
+				);
 		} catch (err) {
 			sendError(res, err);
 		}
@@ -88,7 +99,7 @@ export class TestController {
 				await ResultEntity.findAll({
 					where: {
 						testId,
-						userId
+						userId,
 					},
 				})
 			);

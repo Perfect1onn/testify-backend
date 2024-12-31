@@ -25,8 +25,7 @@ interface Variant {
 }
 
 export interface Answer {
-	questionIds: number[];
-	variantIds: number[];
+	answers: { [key in string]: number };
 }
 
 export type Mode = "exam" | "study";
@@ -127,20 +126,20 @@ export class TestService {
 						);
 
 						await transaction.commit();
-						
+
 						result = createdTest;
 					} catch (err) {
 						await transaction.rollback();
-						result = new ErrorHandler("Transaction Error", 400)
+						result = new ErrorHandler("Transaction Error", 400);
 					}
 				}
 			);
 		}
 
-		if(result instanceof ErrorHandler){
-			throw result
+		if (result instanceof ErrorHandler) {
+			throw result;
 		} else {
-			return result
+			return result;
 		}
 	}
 
@@ -241,48 +240,53 @@ export class TestService {
 
 	// TODO: MODE , перенести логику работы с данными в testRepository
 	async checkAnswers(userAnswer: Answer, testSessionId: number, mode: Mode) {
-		const correctAnswers = await this.testRepository.getCorrectAnswers(
-			userAnswer.questionIds
+		const { answers } = userAnswer;
+		const questionsIds = Object.keys(answers).map((key) => +key);
+
+		const correctVariants = await this.testRepository.getCorrectAnswers(
+			questionsIds
 		);
 
-		userAnswer.variantIds.sort((a, b) => a - b);
-
-		const allWrongAnswers = (
-			await WrongAnswerEntity.findAll({
-				where: {
-					testSessionId,
-				},
-			})
-		).map((answer) => +answer.questionId);
-
-		const wrongAnswers: { questionId: number; testSessionId: number }[] = [];
-		const correctAnswersIdsForDelete: number[] = [];
-
-		const result = correctAnswers.map((correctAnswer, idx) => {
-			const isAnswerCorrect = +correctAnswer.id === +userAnswer.variantIds[idx];
-			const questionId = +correctAnswer.questionId;
-			console.log(questionId, typeof questionId)
-			const hasAnswerInDB = allWrongAnswers.includes(questionId);
-
-			if (!isAnswerCorrect) {
-				if (!hasAnswerInDB) {
-					wrongAnswers.push({
-						questionId,
-						testSessionId,
-					});
-				}
-			} else if (hasAnswerInDB) {
-				correctAnswersIdsForDelete.push(questionId);
-			}
-
-			return {
-				correctAnswer: correctAnswer,
-				isCorrect: isAnswerCorrect,
-				userAnswerQuestionId: userAnswer.variantIds[idx],
-			};
-		});
-
 		if (mode === "study") {
+			const allWrongAnswers = (
+				await WrongAnswerEntity.findAll({
+					where: {
+						testSessionId,
+					},
+				})
+			).map((answer) => +answer.questionId);
+
+			const wrongAnswers: {
+				questionId: number;
+				testSessionId: number;
+				variantId: number;
+			}[] = [];
+			const correctAnswersIdsForDelete: number[] = [];
+
+			const result = correctVariants.map((correctVariant) => {
+				const { id, questionId } = correctVariant;
+				const isAnswerCorrect = +id === answers[questionId];
+				const hasAnswerInDB = allWrongAnswers.includes(+questionId);
+
+				if (!isAnswerCorrect) {
+					if (!hasAnswerInDB) {
+						wrongAnswers.push({
+							questionId,
+							variantId: answers[questionId],
+							testSessionId,
+						});
+					}
+				} else if (hasAnswerInDB) {
+					correctAnswersIdsForDelete.push(questionId);
+				}
+
+				return {
+					correctAnswer: correctVariant,
+					isCorrect: isAnswerCorrect,
+					userAnswerVariantId: answers[questionId],
+				};
+			});
+
 			await WrongAnswerEntity.destroy({
 				where: {
 					testSessionId,
@@ -291,22 +295,46 @@ export class TestService {
 			});
 
 			await WrongAnswerEntity.bulkCreate(wrongAnswers);
+
+			return result;
 		} else {
+			const wrongAnswers: {
+				questionId: number;
+				testSessionId: number;
+				variantId: number;
+			}[] = [];
+
+			correctVariants.map((correctVariant) => {
+				const { id, questionId } = correctVariant;
+				const isAnswerCorrect = +id === answers[questionId];
+
+				if (!isAnswerCorrect) {
+					wrongAnswers.push({
+						questionId,
+						variantId: answers[questionId],
+						testSessionId,
+					});
+				}
+
+				return {
+					correctAnswer: correctVariant,
+					isCorrect: isAnswerCorrect,
+					userAnswerVariantId: answers[questionId],
+				};
+			});
+
 			const testSession = await TestSessionEntity.findByPk(testSessionId);
 			if (testSession) {
 				return await ResultEntity.create({
 					userId: testSession.userId,
 					testId: testSession.testId,
 					mode: "exam",
-					totalAnswersCount: userAnswer.questionIds.length,
-					correctAnswersCount:
-						userAnswer.questionIds.length - wrongAnswers.length,
+					totalAnswersCount: questionsIds.length,
+					correctAnswersCount: questionsIds.length - wrongAnswers.length,
 					wrongAnswersIds: wrongAnswers.map(({ questionId }) => questionId),
 				});
 			}
 		}
-
-		return result;
 	}
 
 	async createTestSession(
