@@ -24,6 +24,7 @@ export const convertapi = new ConvertApi(process.env.CONVERT_API_SECRET!);
 
 const main = async () => {
 	try {
+		console.log(process.env.FRONTEND_URL)
 		const app = Nestling.create(
 			AppModule,
 			cors({
